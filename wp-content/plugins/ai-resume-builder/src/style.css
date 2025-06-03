@@ -1,0 +1,6 @@
+/* cropper.css is not found in node_modules/cropperjs/dist/ with the installed version.
+   Assuming react-cropper or cropperjs's JS handles necessary styles, or styles need to be manually added if issues arise. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
