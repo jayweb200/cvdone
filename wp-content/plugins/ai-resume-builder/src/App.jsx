@@ -5,6 +5,8 @@ import { saveAs } from 'file-saver'; // For DOCX download
 import { buildDocx } from './lib/docx-builder'; // DOCX generation logic
 import FormWrapper from './components/form/FormWrapper';
 import ResumePreview from './components/preview/ResumePreview';
+import PdfEditor from './components/pdf-editor/PdfEditor';
+import AiAutofillPdf from './components/ai-autofill/AiAutofillPdf'; // Import AiAutofillPdf
 import { defaultResumeData } from './components/utility/DefaultResumeData'; // Ensure this path is correct
 
 function App() {
@@ -64,6 +66,54 @@ function App() {
     // If data is changed, it's no longer purely from a selected template
     setSelectedTemplateId('');
   };
+
+  const handleAutofillData = (aiParsedData) => {
+    if (!aiParsedData) return;
+
+    console.log("Received AI Parsed Data for autofill:", aiParsedData);
+
+    // Simple merge: AI data overwrites existing data for the keys it provides.
+    // A more sophisticated merge would involve deeper checks or user prompts.
+    // Also, ensure IDs for list items (experience, education) are generated if missing.
+    // For now, assume AI provides data in a structure that can be directly merged for some keys.
+
+    const updatedData = { ...resumeData };
+
+    if (aiParsedData.personalInfo) {
+      updatedData.personalInfo = { ...resumeData.personalInfo, ...aiParsedData.personalInfo };
+    }
+    if (aiParsedData.summary) {
+      updatedData.summary = aiParsedData.summary; // Assuming summary is a direct string
+    }
+    if (aiParsedData.experience && Array.isArray(aiParsedData.experience)) {
+      // Simple replacement for now. Add `id` if missing.
+      updatedData.experience = aiParsedData.experience.map(exp => ({ ...exp, id: exp.id || generateId() }));
+    }
+    if (aiParsedData.education && Array.isArray(aiParsedData.education)) {
+      updatedData.education = aiParsedData.education.map(edu => ({ ...edu, id: edu.id || generateId() }));
+    }
+    if (aiParsedData.skills && Array.isArray(aiParsedData.skills)) {
+      updatedData.skills = [...new Set([...(resumeData.skills || []), ...aiParsedData.skills])]; // Merge and deduplicate skills
+    }
+
+    // Handle sectionsOrder if provided by AI, otherwise keep existing or default
+    if (aiParsedData.sectionsOrder && Array.isArray(aiParsedData.sectionsOrder)) {
+        // Basic validation of section keys if needed
+        const validSections = ['personalInfo', 'summary', 'experience', 'education', 'skills']; // Add any other valid sections
+        const filteredOrder = aiParsedData.sectionsOrder.filter(key => validSections.includes(key));
+        if (filteredOrder.length > 0) {
+            updatedData.sectionsOrder = filteredOrder;
+        }
+    }
+
+
+    setResumeData(updatedData);
+    alert("Resume data has been partially auto-filled based on the PDF content. Please review carefully.");
+  };
+
+  // Helper function (can be moved to utils if not already there)
+  const generateId = () => Math.random().toString(36).substr(2, 9);
+
 
   const loadTemplate = (templateId) => {
     if (!templateId) {
@@ -214,6 +264,19 @@ function App() {
         <footer className="text-center py-8 mt-12 text-gray-600">
           <p>&copy; {new Date().getFullYear()} AI Resume Builder Plugin. All rights reserved.</p>
         </footer>
+
+        {/* PDF Tools Section */}
+        <div className="mt-12 pt-8 border-t border-gray-300">
+          <h2 className="text-3xl font-semibold mb-6 text-center text-gray-700">PDF Utilities</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <PdfEditor />
+            </div>
+            <div>
+              <AiAutofillPdf onAutofillDataReceived={handleAutofillData} />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
